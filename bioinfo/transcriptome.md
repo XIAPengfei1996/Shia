@@ -2,6 +2,8 @@
 
 ## [转录组入门](https://xiapengfei1996.github.io/bioinfo/transcriptome)
 
+[任务清单](https://mp.weixin.qq.com/s?__biz=MzAxMDkxODM1Ng==&mid=2247484843&idx=1&sn=95370393e9d16e09e854adce78c94523&chksm=9b484510ac3fcc064b1bfc19f5cc73a4fbc113a840a40c3a95632127c54f570d9d66550ebc22&scene=21#wechat_redirect)  [参考流程](https://mp.weixin.qq.com/s?__biz=MzAxMDkxODM1Ng==&mid=2247485440&idx=1&sn=392c8649e334af99ac60e903aaec01e9&chksm=9b4848bbac3fc1ad02ac2f11fd9f4440fb13cffc063d19da56fe34317d0621a4972ec26a41d1&mpshare=1&scene=23&srcid=04136Qg8PRlWmG5bwOcYtjwq%23rd)
+
 ### 计算机资源的准备
 
 - 系统环境及硬件配置： 
@@ -123,8 +125,8 @@ _注意理解GEO/SRA数据库的数据存放形式_
 brew install axel
 ```
 
-- 循环语句实现数据下载
-（**用时约两小时**）
+- 循环axel语句实现数据下载；
+（**2200+KB/s，用时约两小时**）
 ```Shell
 for i in {56..62}
 do
@@ -134,12 +136,11 @@ done
 
 ### 了解fastq测序数据
 
-- 循环sratoolkit（sra-tools）中fastq-dump语句把sra文件转换为fastq格式
+- 循环sratoolkit（sra-tools）中fastq-dump语句把sra文件转换为fastq格式；
 （**用时约三个半小时**）
 此处注意fastq-dump命令不显示百分数进度条！
 ```Shell
-# 查看帮助文件
-fastq-dump -h
+fastq-dump -h # 查看帮助文件
 
 for i in {56..62}
 do
@@ -147,17 +148,65 @@ fastq-dump --gzip --split-3 -O /Users/xiapengfei/ -A SRR35899${i}.sra
 done
 ```
 
-3：26
-- 循环fastqc语句测试测序文件的质量
-（**用时约25分钟**）
+- 循环fastqc语句测试测序文件的质量；([MultiQC可以批量显示质控结果](http://fbb84b26.wiz03.com/share/s/3XK4IC0cm4CL22pU-r1HPcQQ1iRTvV2GwkwL2AaxYi2fXHP7)）
+（**4线程，用时约25分钟**）
 ```Shell
 for i in {56..62}
 do
 fastqc -t 4 -O /Users/xiapengfei/ SRR35899$i.sra_1.fastq.gz SRR35899$i.sra_2.fastq.gz
 done
 ```
-_理解测序reads，GC含量，质量值，接头，index，fastqc的全部报告_
+_[理解测序reads，GC含量，质量值，接头，index，fastqc的全部报告](https://github.com/XIAPengfei1996/Shia/tree/master/bioinfo/fastqc_html)_
 
+[**经验教训**](http://www.bio-info-trainee.com/2275.html)
+
+### 了解参考基因组及基因注释
+
+- 在[UCSC](http://genome.ucsc.edu/index.html)中打开Downloads中Genome Data页面，点击Human选择Feb. 2009 (GRCh37/hg19)栏下Full data set，下拉找到chromFa.tar.gz文件；
+
+> chromFa.tar.gz - The assembly sequence in one file per chromosome.
+>     Repeats from RepeatMasker and Tandem Repeats Finder (with period
+>     of 12 or less) are shown in lower case; non-repeating sequence is
+>     shown in upper case.
+
+- axel命令下载hg19参考基因组数据；
+（**400+KB/s，用时约35分钟**）
+```Shell
+axel http://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/chromFa.tar.gz
+tar zxvf chromFa.tar.gz  # 解压该文件
+cat *.fa > hg19.fa  # 将解压文件合并为一个文件
+rm chr*.fa  # 删除无关数据
+```
+
+- 从[gencode数据库](http://www.gencodegenes.org)中打开Data中Human栏内[GRCh37-mapped Releases](https://www.gencodegenes.org/releases/grch37_mapped_releases.html)，点击GENCODE release栏下最新版的数据，下载基因注释文件；
+（**用时5分钟**)
+```Shell
+axel ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_28/GRCh37_mapping/gencode.v28lift37.annotation.gtf.gz  # GTF格式主要是用来描述基因的注释
+axel ftp://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_28/GRCh37_mapping/gencode.v28lift37.annotation.gff3.gz  # GFF文件是一种用来描述基因组特征的文件，现在我们所使用的大部分都是第三版（GFF3）
+# gzip -d解压并删除压缩包
+gzip -d gencode.v28lift37.annotation.gtf.gz
+gzip -d gencode.v28lift37.annotation.gff3.gz
+```
+
+_- 用IGV去查看感兴趣的基因的结构；_
+  - 下载安装[JAVA 8](https://java.com/en/download/mac_download.jsp)；
+  - 下载[igv](http://software.broadinstitute.org/software/igv/download)直接打开；
+  - 在菜单栏Genomes中选择Load Genome from File…导入hg19.fa文件；
+  - 在菜单栏Tools中打开Run igvtools…界面，在Command栏中选择Sort，在Input File栏中导入gtf文件后运行；
+  - 在菜单栏File中选择Load from File…导入sorted.gtf文件并index；
+  - 在工具栏输入查找的基因名词（如：TP53）或染色体定位（如chr17:7,569,720-7,592,868)查看可视化结构；
+
+### 序列比对
+
+从[HISAT2](http://ccb.jhu.edu/software/hisat2/index.shtml)的主页下载index文件
+```Shell
+axel ftp://ftp.ccb.jhu.edu/pub/infphilo/hisat2/data/hg19.tar.gz
+```
+把fastq格式的reads比对上去得到sam文件
+
+用samtools把sam文件转为bam文件，并且排序(注意N和P两种排序区别)索引好
+
+### reads计数
 
 
 ## [ChIP-seq基础入门](https://xiapengfei1996.github.io/bioinfo/ChIP-seq)
